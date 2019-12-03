@@ -4,9 +4,9 @@ AVISO: Este caso práctico tiene como único fin el aprendizaje, mapecode no se 
 ## Configuración
 Necesitamos 2 máquinas virtuales para realizar este caso práctico, una con **windows xp** y otra con **kali linux**. En mi caso las he configurado en virtualbox.
 
-La primera máquina virtual debe contener **minishare 1.4.1**([este archivo](minishare-1.4.1.zip)) y el depurador **immunity debugger**(descargalo [aquí](https://www.youtube.com/redirect?q=https%3A%2F%2Fdebugger.immunityinc.com%2FID_register.py&event=video_description&v=PQJn4s4E8Os&redir_token=HhYbzQxWKEezzVSvgEVpywbDk1N8MTU3NTQ2NTA0MUAxNTc1Mzc4NjQx))
+La primera máquina virtual debe contener **minishare 1.4.1**([este archivo](minishare-1.4.1.zip)) y el depurador **immunity debugger**(descargalo [aquí](https://www.immunityinc.com/products/debugger/)). Además el depurador debe tener [mona](https://github.com/corelan/mona)
 
-La segunda máquina virtual no necesita ninguna configuración especial y podemos descargar directamente la máquina en este enlace.
+La segunda máquina virtual no necesita ninguna configuración especial y podemos descargar directamente la máquina en este [enlace](https://www.kali.org/downloads/).
 
 Es importante tener en cuenta que debemos tener las dos máquinas en la misma red, para que se puedan comunicar. Podemos comprobarlo haciendo un ping de una a la otra y viceversa. Si tienes algún problema asociado a esto dejame un comentario en el blog e intento ayudarte.
 
@@ -37,7 +37,7 @@ Los registros en x86(32 bits) que vamos a usar son los siguientes:
 ### Debugger
 Un debugger es una herramienta que nos permite estudiar el comportamiento de un código. En este caso vamos a usar Immunity Degubber, este programa se divide en 4 partes principales:
 
-![](partes_immunity_debugger.png)
+![](Imagenes/partes_immunity_debugger.png)
 
 * **Instrucciones de la CPU:** el código en lenguaje ensamblador con los diferentes tipos de instrucciones utilizadas
 * **Registros y Flags:** aquí tenemos los diferentes registros que usa el programa, podemos ver por ejemplo el ESP y EIP que hemos comentado antes. También podemos observer los flags, aunque para este caso práctico no los vamos a usar.
@@ -54,7 +54,7 @@ Fuzzing es una parte muy importante en el desarrollo de exploits, consiste en en
 Nuestro objetivo será mandar muchos datos para que se produzca un buffer overflow en la aplicación que queremos vulnerar. Los puntos de entrada de nuestra aplicación (Minishare) serían los comandos del protocolo que usemos para comunicarnos, por ejemplo si usamos HTTP podríamos mandar una cantidad muy grande de datos en una petición de tipo GET.
 
 ## Revisión de la vulnerabilidad
-La vulnerabilidad que vamos a explotar tiene el código [CVE-2004-2271] (https://nvd.nist.gov/vuln/detail/CVE-2004-2271). Su descripción dice así "El desbordamiento del búfer en MiniShare 1.4.1 y versiones anteriores permite a los atacantes remotos ejecutar código arbitrario a través de una solicitud HTTP GET larga"
+La vulnerabilidad que vamos a explotar tiene el código [CVE-2004-2271](https://nvd.nist.gov/vuln/detail/CVE-2004-2271). Su descripción dice así "El desbordamiento del búfer en MiniShare 1.4.1 y versiones anteriores permite a los atacantes remotos ejecutar código arbitrario a través de una solicitud HTTP GET larga"
 
 Gracias a esta descripción sabemos que lo que debemos enviar para conseguir desbordar el buffer es una petición HTTP de tipo GET con una cantidad de datos muy grande.
 
@@ -92,14 +92,14 @@ Para comprobar si hemos conseguido nuestro objetivo podemos seguir estos pasos:
     * Click en file, attach
     * Seleccionar el proceso minishare y click en attach
 
-        ![](attach.png)
+        ![](Imagenes/attach.png)
 
     * Pulsamos F9 para ejecutar minishare en immunity y debe aparecer en la esquina inferior derecha del immunity _"Running"_ 
 * Lanzamos nuestro exploit
 
 Si el proceso se ha realizado correctamente debemos obtener lo siguiente:
 
-![](Overflow1.png)
+![](Imagenes/Overflow1.png)
 
 Este proceso tendremos que seguir para ver el efecto que tiene nuestro exploit sobre minishare.
 
@@ -109,10 +109,10 @@ Ahora nuestro objetivo será saber cuantos bytes necesitamos exactamente antes d
 Los pasos a seguir para realizar el calculo serían los siguientes:
 * Ejecutar el comando **!mona pattern_create 1800** en la consola de immunity, porque 1800 es el valor en el cual el exploit anterior se ha quedado parado.
 
-    ![](mona_pattern_create.png)
+    ![](Imagenes/mona_pattern_create.png)
 
     Este comando nos ha generado un fichero en **C:\Archivos de programa\Immunity Inc\Immunity Debugger** llamado **pattern.txt**
-    ![](pattern.png)
+    ![](Imagenes/pattern.png)
 
 * Reiniciar immunity y minishare 
 * Ejecutar un nuevo exploit (exploit2.py) con la parte ascii del pattern anterior en el buff, se puede ver a continuación:
@@ -132,11 +132,11 @@ Los pasos a seguir para realizar el calculo serían los siguientes:
     s.close()
     ```
 * Ejecutar **!mona pattern_offset 36684335**, siendo el número el valor de EIP después de ejecutar exploit2.py
-![](mona_pattern_offset.png)
+![](Imagenes/mona_pattern_offset.png)
 Podemos ver en la imagen que el valor que nos ha calculado mona es 1787, por lo tanto, a partir de la posición 1788 estamos sobreescribiendo EIP
 * Creamos un nuevo exploit (exploit3.py) cambiando el buffer por esta operación **"A"*1787+"B"*4+"C"*400**. La primera parte sería antes de llegar a sobreescribir EIP, la segunda la sobreescritura y la tercera parte donde introduciremos más adelante el _shellcode_(para acceder a la máquina windows)
 
-    ![](resultado_exploit3.png)
+    ![](Imagenes/resultado_exploit3.png)
     
     Como se puede ver en la imagen EIP tiene las 4 B's y ESP todas las C's
     ```Python
@@ -165,7 +165,7 @@ En un primer caso no vamos a evitarlos, sino que vamos el proceso para detectar 
 Pasos a seguir:
 * Lo primero que vamos a hacer es generar una lista en hexadecimal con los caracteres ASCII de 0 a 255 con el comando **!mona bytearray**
 
-    ![](bytearray.png)
+    ![](Imagenes/bytearray.png)
 
 * Se genera un fichero que se guarda en un fichero llamado **bytearray.txt** en el mismo sitio que anteriormente **pattern.txt**. Copiamos ese string en un nuevo exploit (exploit4.py) para sumarlo al buffer que teniamos antes
     ```Python
@@ -193,17 +193,17 @@ Pasos a seguir:
     ```
 * Ejecutamos el proceso de nuevo con el nuevo exploit y pulsamos click derecho en el registro ESP y "follow in dump"
 
-    ![](follow_in_dump.png)
+    ![](Imagenes/follow_in_dump.png)
 
 En la siguiente imagen podemos ver como a justo después de las C's tenemos un badchar y esto hará que el resto de caracteres no queden bien representados.
 
-![](dump_badchars.png)
+![](Imagenes/dump_badchars.png)
 
 Ahora elimnamos el badchar (el primer valor de la cadena, '\x00') que nos impedia representar correctamente los caracteres y volvemos a realizar el proceso.
 
 En la siguiente imagen podemos ver como ahora si se representa correctamente hasta el caracter señalado que es otro badchar.
 
-![](dump_badchars2.png)
+![](Imagenes/dump_badchars2.png)
 
 El carácter que habría que eliminar ahora sería el '\x0d' y creamos un nuevo exploit (exploit6.py) y volvemos a ejecutar el proceso.
 
@@ -214,7 +214,7 @@ En este punto necesitamos una instrucción de salto a ESP para que desde el regi
 
 Para encontrar la instrucción de salto podemos ejecutar el siguiente comando de immunity: **!mona jmp -r esp**. Este comando nos devolverá diferentes DLL que podremos usar, en este caso nos interesa alguna que no tenga las protecciones de memoria que comentabamos al pricipio, como la que está señalada en la imagen:
 
-![](mona_jmp.png)
+![](Imagenes/mona_jmp.png)
 
 Lo que nos interesa es la dirección de memoria con lo cual haremos click derecho, "Copy to clipboard, Address". 
 
@@ -275,10 +275,12 @@ Tras esto abrimos metasploit y ejecutamos los siguientes comandos:
 
 Si la configuración es correcta y se quedará a la escucha. A continuación, abrimos y minishare y ejecutamos el exploit. Como resultado nos debería salir la consola de meterpreter.
 
-![](meterpreter.png)
+![](Imagenes/meterpreter.png)
 
 
 ## Fuentes
+https://en.wikipedia.org/wiki/Stack_buffer_overflow
+https://en.wikipedia.org/wiki/Executable_space_protection
 https://www.youtube.com/watch?time_continue=11&v=PQJn4s4E8Os&feature=emb_logo
 https://mosunit.wordpress.com/2016/03/15/exploting-buffer-overflow-minishare-1-4-1/
 https://en.redinskala.com/starting-a-handler-with-metasploit/
